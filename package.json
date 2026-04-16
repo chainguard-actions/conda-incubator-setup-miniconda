@@ -1,0 +1,64 @@
+{
+  "name": "setup-miniconda",
+  "description": "GitHub action for setting up conda from default or custom installers",
+  "main": "lib/main.js",
+  "scripts": {
+    "build": "ncc build -o dist/setup src/setup.ts && ncc build -o dist/delete src/delete.ts",
+    "format": "npm run prettier:format && npm run eslint:format",
+    "check": "npm run prettier:check && npm run eslint:check",
+    "prettier:format": "prettier --list-different --write \"src/**/*.ts\" \"*.{md,json,yml}\" \"{etc,.github}/**/*.{md,json,yml,js}\"",
+    "prettier:check": "prettier --list-different \"src/**/*.ts\" \"*.{md,json,yml}\" \"{etc,.github}/**/*.{md,json,yml,js}\"",
+    "eslint:format": "eslint --ext .js,.jsx,.ts,.tsx --fix .",
+    "eslint:check": "eslint --ext .js,.jsx,.ts,.tsx .",
+    "prepare": "husky install"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/conda-incubator/setup-miniconda.git"
+  },
+  "keywords": [
+    "action",
+    "conda",
+    "environment",
+    "github",
+    "miniconda",
+    "miniforge",
+    "mamba",
+    "python",
+    "starter",
+    "setup"
+  ],
+  "author": "Gonzalo Peña-Castellanos",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/conda-incubator/setup-miniconda"
+  },
+  "homepage": "https://github.com/conda-incubator/setup-miniconda#conda-incubatorsetup-miniconda",
+  "dependencies": {
+    "@actions/core": "^2.0.2",
+    "@actions/exec": "^2.0.0",
+    "@actions/io": "^2.0.0",
+    "@actions/tool-cache": "^2.0.2",
+    "get-hrefs": "^4.0.0",
+    "js-yaml": "^4.1.1",
+    "normalize-url": "^8.1.1",
+    "semver": "^7.7.3"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^20.9.4",
+    "@types/semver": "^7.7.1",
+    "@typescript-eslint/eslint-plugin": "^6.12.0",
+    "@typescript-eslint/parser": "^6.12.0",
+    "@vercel/ncc": "^0.38.1",
+    "eslint": "^8.54.0",
+    "husky": "^8.0.3",
+    "prettier": "^3.1.0",
+    "typescript": "^5.3.2"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "npm run format && npm run check && npm run build"
+    }
+  }
+}
