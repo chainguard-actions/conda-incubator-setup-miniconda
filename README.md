@@ -1,6 +1,12 @@
 # conda-incubator/setup-miniconda
 
-Hardened GitHub Action by [Chainguard](https://www.chainguard.dev).
+Hardened by [Chainguard](https://www.chainguard.dev) from the upstream action at [https://github.com/conda-incubator/setup-miniconda](https://github.com/conda-incubator/setup-miniconda).
+
+## Versions
+
+| Version | Tag | Upstream commit |
+|---------|-----|-----------------|
+| v3.3.0 | [`v3.3.0`](https://github.com/chainguard-actions/setup-miniconda/tree/v3.3.0) | — |
 
 ## Privacy
 
