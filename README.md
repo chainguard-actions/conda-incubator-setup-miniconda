@@ -1,5 +1,7 @@
 # conda-incubator/setup-miniconda
 
+Set up your GitHub Actions workflow with conda via miniconda
+
 Hardened by [Chainguard](https://www.chainguard.dev) from the upstream action at [https://github.com/conda-incubator/setup-miniconda](https://github.com/conda-incubator/setup-miniconda).
 
 ## Versions

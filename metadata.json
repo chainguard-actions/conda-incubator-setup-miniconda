@@ -1,5 +1,6 @@
 {
   "owner": "conda-incubator",
   "name": "setup-miniconda",
-  "visibility": ""
+  "visibility": "internal",
+  "description": "Set up your GitHub Actions workflow with conda via miniconda"
 }
