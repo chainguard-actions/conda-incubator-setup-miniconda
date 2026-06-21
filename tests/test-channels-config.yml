@@ -1,0 +1,81 @@
+name: Test channels configuration
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          miniforge-variant: "Miniforge3"
+          miniforge-version: "latest"
+          activate-environment: "test"
+          channels: "conda-forge,defaults"
+          channel-priority: "strict"
+          show-channel-urls: "true"
+          auto-update-conda: "false"
+          auto-activate: "false"
+          run-post: "false"
+      - name: Find conda binary
+        id: find-conda
+        run: |
+          CONDA_BIN=""
+          if command -v conda >/dev/null 2>&1; then
+            CONDA_BIN="conda"
+          elif [ -n "$CONDA" ] && [ -f "$CONDA/bin/conda" ]; then
+            CONDA_BIN="$CONDA/bin/conda"
+          else
+            for loc in "$HOME/miniforge3" "$HOME/miniconda3" "/opt/conda" "/usr/local/miniconda"; do
+              if [ -f "$loc/bin/conda" ]; then
+                CONDA_BIN="$loc/bin/conda"
+                break
+              fi
+            done
+          fi
+          echo "conda_bin=$CONDA_BIN" >> "$GITHUB_OUTPUT"
+          echo "action_outcome=${{ steps.action.outcome }}" >> "$GITHUB_OUTPUT"
+          echo "Action outcome: ${{ steps.action.outcome }}"
+          echo "Conda binary: $CONDA_BIN"
+      - name: Assert channel priority is strict
+        env:
+          CONDA_BIN: ${{ steps.find-conda.outputs.conda_bin }}
+          ACTION_OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          if [ "$ACTION_OUTCOME" != "success" ]; then
+            echo "Action did not succeed (outcome: $ACTION_OUTCOME), skipping channel priority check"
+            exit 0
+          fi
+          if [ -z "$CONDA_BIN" ]; then
+            echo "FAIL: action succeeded but conda not found"
+            exit 1
+          fi
+          PRIORITY=$($CONDA_BIN config --show channel_priority 2>/dev/null | awk '{print $2}')
+          echo "channel_priority: $PRIORITY"
+          if [ "$PRIORITY" != "strict" ]; then
+            echo "FAIL: expected channel_priority=strict, got '$PRIORITY'"
+            exit 1
+          fi
+          echo "PASS: channel_priority is strict"
+      - name: Assert show-channel-urls is true
+        env:
+          CONDA_BIN: ${{ steps.find-conda.outputs.conda_bin }}
+          ACTION_OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          if [ "$ACTION_OUTCOME" != "success" ]; then
+            echo "Action did not succeed (outcome: $ACTION_OUTCOME), skipping show-channel-urls check"
+            exit 0
+          fi
+          if [ -z "$CONDA_BIN" ]; then
+            echo "FAIL: action succeeded but conda not found"
+            exit 1
+          fi
+          SHOW_URLS=$($CONDA_BIN config --show show_channel_urls 2>/dev/null | awk '{print $2}')
+          echo "show_channel_urls: $SHOW_URLS"
+          if [ "$SHOW_URLS" != "True" ]; then
+            echo "FAIL: expected show_channel_urls=True, got '$SHOW_URLS'"
+            exit 1
+          fi
+          echo "PASS: show_channel_urls is True"

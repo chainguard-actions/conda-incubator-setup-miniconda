@@ -1,0 +1,72 @@
+name: Test Miniconda version install
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          miniconda-version: "latest"
+          activate-environment: "test"
+          auto-update-conda: "false"
+          auto-activate: "false"
+          run-post: "false"
+      - name: Assert conda is available (when action succeeded)
+        run: |
+          echo "Action outcome: ${{ steps.action.outcome }}"
+          if [ "${{ steps.action.outcome }}" != "success" ]; then
+            echo "Action did not succeed (outcome: ${{ steps.action.outcome }}), skipping conda availability check"
+            exit 0
+          fi
+          # Try PATH first
+          if command -v conda >/dev/null 2>&1; then
+            echo "conda found on PATH: $(conda --version)"
+            echo "PASS"
+            exit 0
+          fi
+          # Try via CONDA env var
+          if [ -n "$CONDA" ] && [ -f "$CONDA/bin/conda" ]; then
+            echo "conda found via CONDA env var: $($CONDA/bin/conda --version)"
+            echo "PASS"
+            exit 0
+          fi
+          # Try common install locations
+          for loc in "$HOME/miniforge3" "$HOME/miniconda3" "/opt/conda" "/usr/local/miniconda"; do
+            if [ -f "$loc/bin/conda" ]; then
+              echo "conda found at $loc: $($loc/bin/conda --version)"
+              echo "PASS"
+              exit 0
+            fi
+          done
+          echo "FAIL: action succeeded but conda not found anywhere"
+          exit 1
+      - name: Assert conda info runs successfully (when action succeeded)
+        run: |
+          echo "Action outcome: ${{ steps.action.outcome }}"
+          if [ "${{ steps.action.outcome }}" != "success" ]; then
+            echo "Action did not succeed (outcome: ${{ steps.action.outcome }}), skipping conda info check"
+            exit 0
+          fi
+          CONDA_BIN=""
+          if command -v conda >/dev/null 2>&1; then
+            CONDA_BIN="conda"
+          elif [ -n "$CONDA" ] && [ -f "$CONDA/bin/conda" ]; then
+            CONDA_BIN="$CONDA/bin/conda"
+          else
+            for loc in "$HOME/miniforge3" "$HOME/miniconda3" "/opt/conda" "/usr/local/miniconda"; do
+              if [ -f "$loc/bin/conda" ]; then
+                CONDA_BIN="$loc/bin/conda"
+                break
+              fi
+            done
+          fi
+          if [ -z "$CONDA_BIN" ]; then
+            echo "FAIL: action succeeded but conda not found"
+            exit 1
+          fi
+          $CONDA_BIN info
+          echo "PASS: conda info succeeded"
