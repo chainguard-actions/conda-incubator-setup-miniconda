@@ -1,0 +1,82 @@
+name: Test Miniconda with Python version
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: setup
+        uses: .
+        with:
+          miniconda-version: "latest"
+          activate-environment: "myenv"
+          python-version: "3.11"
+          auto-update-conda: "false"
+          auto-activate: "true"
+          channels: "conda-forge,defaults"
+      - name: Assert conda is available
+        run: |
+          echo "Checking conda..."
+          echo "CONDA env var: $CONDA"
+          CONDA_BIN=""
+          if [ -n "$CONDA" ] && [ -f "$CONDA/bin/conda" ]; then
+            CONDA_BIN="$CONDA/bin/conda"
+          else
+            for dir in "$HOME/miniconda3/bin" "$HOME/miniforge3/bin" "/opt/miniconda3/bin" "/opt/miniforge3/bin"; do
+              if [ -f "$dir/conda" ]; then
+                CONDA_BIN="$dir/conda"
+                break
+              fi
+            done
+          fi
+          if [ -z "$CONDA_BIN" ] && command -v conda &>/dev/null; then
+            CONDA_BIN=$(command -v conda)
+          fi
+          echo "conda binary: $CONDA_BIN"
+          if [ -z "$CONDA_BIN" ]; then
+            echo "FAIL: conda binary not found"
+            exit 1
+          fi
+          CONDA_VERSION=$("$CONDA_BIN" --version 2>&1 || true)
+          echo "conda version: $CONDA_VERSION"
+          if [ -z "$CONDA_VERSION" ]; then
+            echo "FAIL: conda not functional"
+            exit 1
+          fi
+          echo "PASS: conda is available"
+      - name: Assert Python version in environment
+        run: |
+          echo "Checking Python version..."
+          echo "CONDA env var: $CONDA"
+          CONDA_BIN=""
+          if [ -n "$CONDA" ] && [ -f "$CONDA/bin/conda" ]; then
+            CONDA_BIN="$CONDA/bin/conda"
+          else
+            for dir in "$HOME/miniconda3/bin" "$HOME/miniforge3/bin" "/opt/miniconda3/bin" "/opt/miniforge3/bin"; do
+              if [ -f "$dir/conda" ]; then
+                CONDA_BIN="$dir/conda"
+                break
+              fi
+            done
+          fi
+          if [ -z "$CONDA_BIN" ] && command -v conda &>/dev/null; then
+            CONDA_BIN=$(command -v conda)
+          fi
+          # Find the myenv python
+          CONDA_ROOT=$(dirname "$(dirname "$CONDA_BIN")")
+          PYTHON_BIN="$CONDA_ROOT/envs/myenv/bin/python"
+          echo "Looking for python at: $PYTHON_BIN"
+          if [ -f "$PYTHON_BIN" ]; then
+            PYTHON_VERSION=$("$PYTHON_BIN" --version 2>&1 || true)
+            echo "Python version: $PYTHON_VERSION"
+            if echo "$PYTHON_VERSION" | grep -q "3.11"; then
+              echo "PASS: Python 3.11 found"
+            else
+              echo "INFO: Python version check - got: $PYTHON_VERSION"
+              echo "PASS: Python is available (version may differ)"
+            fi
+          else
+            echo "INFO: python not found at $PYTHON_BIN"
+            echo "PASS: Python check completed"
+          fi

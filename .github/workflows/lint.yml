@@ -1,0 +1,69 @@
+name: "Linting"
+
+on:
+  pull_request:
+    branches:
+      - "*"
+  push:
+    branches:
+      - "develop"
+      - "main"
+      - "master"
+
+concurrency:
+  group:
+    ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: "ubuntu-latest"
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+      - run: |
+          # ci: install exact versions from package-lock.json
+          #     fast, secure, predictable compared to npm install
+          npm ci
+          npm run check
+  build:
+    name: Build
+    runs-on: "ubuntu-latest"
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+      - name: Build
+        run: |
+          # ci: install exact versions from package-lock.json
+          #     fast, secure, predictable compared to npm install
+          npm ci
+          npm run build
+
+      - name: Check that all built are committed
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "::error::Uncommitted changes detected after build."
+            echo ""
+            echo "Changed files:"
+            git status --short
+            echo ""
+            echo "Diff:"
+            git diff --stat
+            echo ""
+            echo "Please run locally with the same Node version as CI:"
+            echo "  npm ci"
+            echo "  npm run format"
+            echo "  npm run build"
+            echo "and commit the resulting changes before pushing."
+            exit 1
+          fi

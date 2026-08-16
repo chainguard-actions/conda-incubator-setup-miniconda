@@ -1,4 +1,4 @@
-name: Test environment-file input and outputs
+name: Test environment file usage
 on:
   workflow_dispatch:
 jobs:
@@ -6,78 +6,70 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - id: action
+      - name: Create environment file
+        run: |
+          cat > "$GITHUB_WORKSPACE/test-environment.yml" << 'EOF'
+          name: testenv
+          channels:
+            - conda-forge
+            - defaults
+          dependencies:
+            - python=3.11
+          EOF
+          echo "Environment file created:"
+          cat "$GITHUB_WORKSPACE/test-environment.yml"
+      - id: setup
         uses: .
-        continue-on-error: true
         with:
           miniforge-variant: "Miniforge3"
           miniforge-version: "latest"
-          environment-file: "${{ github.workspace }}/pristine/conda-incubator--setup-miniconda/v4.0.1/tests/fixtures/test-environment.yml"
-          activate-environment: "myenv"
+          environment-file: "test-environment.yml"
+          activate-environment: "testenv"
           auto-update-conda: "false"
-          auto-activate: "false"
-          run-post: "false"
-      - name: Assert environment-file output is set (when action succeeded)
+          auto-activate: "true"
+      - name: Assert environment-file output is set
         env:
-          ENV_FILE: ${{ steps.action.outputs.environment-file }}
-          ACTION_OUTCOME: ${{ steps.action.outcome }}
+          ENV_FILE: ${{ steps.setup.outputs.environment-file }}
         run: |
-          echo "Action outcome: $ACTION_OUTCOME"
           echo "environment-file output: '$ENV_FILE'"
-          if [ "$ACTION_OUTCOME" != "success" ]; then
-            echo "Action did not succeed (outcome: $ACTION_OUTCOME), skipping environment-file output check"
-            exit 0
-          fi
           if [ -z "$ENV_FILE" ]; then
-            echo "FAIL: environment-file output is empty after successful action run"
+            echo "FAIL: environment-file output is empty"
             exit 1
           fi
-          echo "PASS: environment-file output is '$ENV_FILE'"
-      - name: Assert environment-file-content output is set (when action succeeded)
+          echo "PASS: environment-file output is set to: $ENV_FILE"
+      - name: Assert environment-file-content output is set
         env:
-          ENV_CONTENT: ${{ steps.action.outputs.environment-file-content }}
-          ACTION_OUTCOME: ${{ steps.action.outcome }}
+          ENV_CONTENT: ${{ steps.setup.outputs.environment-file-content }}
         run: |
-          echo "Action outcome: $ACTION_OUTCOME"
-          if [ "$ACTION_OUTCOME" != "success" ]; then
-            echo "Action did not succeed (outcome: $ACTION_OUTCOME), skipping environment-file-content check"
-            exit 0
-          fi
+          echo "environment-file-content output: '$ENV_CONTENT'"
           if [ -z "$ENV_CONTENT" ]; then
-            echo "FAIL: environment-file-content output is empty after successful action run"
+            echo "FAIL: environment-file-content output is empty"
             exit 1
           fi
-          echo "PASS: environment-file-content is set"
-      - name: Assert environment was created (when action succeeded)
-        env:
-          ACTION_OUTCOME: ${{ steps.action.outcome }}
+          echo "PASS: environment-file-content output is set"
+      - name: Assert conda environment exists
         run: |
-          echo "Action outcome: $ACTION_OUTCOME"
-          if [ "$ACTION_OUTCOME" != "success" ]; then
-            echo "Action did not succeed (outcome: $ACTION_OUTCOME), skipping environment check"
-            exit 0
-          fi
+          echo "Checking conda environments..."
+          echo "CONDA env var: $CONDA"
           CONDA_BIN=""
-          if command -v conda >/dev/null 2>&1; then
-            CONDA_BIN="conda"
-          elif [ -n "$CONDA" ] && [ -f "$CONDA/bin/conda" ]; then
+          if [ -n "$CONDA" ] && [ -f "$CONDA/bin/conda" ]; then
             CONDA_BIN="$CONDA/bin/conda"
           else
-            for loc in "$HOME/miniforge3" "$HOME/miniconda3" "/opt/conda" "/usr/local/miniconda"; do
-              if [ -f "$loc/bin/conda" ]; then
-                CONDA_BIN="$loc/bin/conda"
+            for dir in "$HOME/miniforge3/bin" "$HOME/miniconda3/bin" "/opt/miniconda3/bin" "/opt/miniforge3/bin"; do
+              if [ -f "$dir/conda" ]; then
+                CONDA_BIN="$dir/conda"
                 break
               fi
             done
           fi
-          if [ -z "$CONDA_BIN" ]; then
-            echo "FAIL: action succeeded but conda not found"
+          if [ -z "$CONDA_BIN" ] && command -v conda &>/dev/null; then
+            CONDA_BIN=$(command -v conda)
+          fi
+          echo "conda binary: $CONDA_BIN"
+          "$CONDA_BIN" env list
+          if "$CONDA_BIN" env list | grep -q "testenv"; then
+            echo "PASS: testenv environment found"
+          else
+            echo "FAIL: testenv environment not found"
             exit 1
           fi
-          echo "Using conda: $CONDA_BIN"
-          $CONDA_BIN env list
-          if ! $CONDA_BIN env list | grep -q "myenv"; then
-            echo "FAIL: myenv environment not found in conda env list"
-            exit 1
-          fi
-          echo "PASS: myenv environment exists"

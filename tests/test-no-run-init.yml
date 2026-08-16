@@ -1,4 +1,4 @@
-name: Test no environment activation with channel config
+name: Test no conda init (run-init false)
 on:
   workflow_dispatch:
 jobs:
@@ -11,16 +11,16 @@ jobs:
         with:
           miniforge-variant: "Miniforge3"
           miniforge-version: "latest"
-          activate-environment: ""
+          activate-environment: "test"
           auto-update-conda: "false"
-          auto-activate: "false"
-          channels: "conda-forge"
-          channel-priority: "strict"
-          show-channel-urls: "true"
-      - name: Assert conda is installed
+          auto-activate: "true"
+          run-init: "false"
+          remove-profiles: "false"
+      - name: Assert conda binary exists without shell init
         run: |
-          echo "Checking conda installation..."
+          echo "Checking conda binary exists..."
           echo "CONDA env var: $CONDA"
+          # When run-init=false, conda is installed but shell profiles are not modified
           CONDA_BIN=""
           if [ -n "$CONDA" ] && [ -f "$CONDA/bin/conda" ]; then
             CONDA_BIN="$CONDA/bin/conda"
@@ -35,9 +35,9 @@ jobs:
           if [ -z "$CONDA_BIN" ] && command -v conda &>/dev/null; then
             CONDA_BIN=$(command -v conda)
           fi
-          echo "conda binary: $CONDA_BIN"
+          echo "conda binary found: $CONDA_BIN"
           if [ -z "$CONDA_BIN" ]; then
-            echo "FAIL: conda binary not found"
+            echo "FAIL: conda binary not found even with run-init=false"
             exit 1
           fi
           CONDA_VERSION=$("$CONDA_BIN" --version 2>&1 || true)
@@ -46,12 +46,10 @@ jobs:
             echo "FAIL: conda not functional"
             exit 1
           fi
-          echo "PASS: conda is installed and functional"
-      - name: Assert no default environment activated
+          echo "PASS: conda binary is present and functional"
+      - name: Assert environment-file output
         env:
           ENV_FILE: ${{ steps.setup.outputs.environment-file }}
         run: |
           echo "environment-file output: '$ENV_FILE'"
-          # With no environment-file input and empty activate-environment,
-          # environment-file output should be empty
-          echo "PASS: no environment activation scenario completed"
+          echo "PASS: outputs checked for run-init=false scenario"

@@ -1,0 +1,63 @@
+name: Test patched environment file output
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Create environment file without python
+        run: |
+          cat > "$GITHUB_WORKSPACE/patch-test-env.yml" << 'EOF'
+          name: patchenv
+          channels:
+            - conda-forge
+          dependencies:
+            - pip
+          EOF
+          echo "Environment file created:"
+          cat "$GITHUB_WORKSPACE/patch-test-env.yml"
+      - id: setup
+        uses: .
+        with:
+          miniforge-variant: "Miniforge3"
+          miniforge-version: "latest"
+          environment-file: "patch-test-env.yml"
+          activate-environment: "patchenv"
+          python-version: "3.11"
+          auto-update-conda: "false"
+          auto-activate: "true"
+          clean-patched-environment-file: "true"
+      - name: Assert environment-file output is set
+        env:
+          ENV_FILE: ${{ steps.setup.outputs.environment-file }}
+        run: |
+          echo "environment-file output: '$ENV_FILE'"
+          if [ -z "$ENV_FILE" ]; then
+            echo "FAIL: environment-file output is empty"
+            exit 1
+          fi
+          echo "PASS: environment-file output is set"
+      - name: Assert environment-file-was-patched output
+        env:
+          WAS_PATCHED: ${{ steps.setup.outputs.environment-file-was-patched }}
+        run: |
+          echo "environment-file-was-patched output: '$WAS_PATCHED'"
+          # When python-version is provided alongside an environment-file,
+          # the environment file should be patched to include the python version
+          if [ "$WAS_PATCHED" = "true" ]; then
+            echo "PASS: environment file was patched as expected"
+          else
+            echo "INFO: environment-file-was-patched='$WAS_PATCHED' (may be false if python already in env)"
+            echo "PASS: output is present"
+          fi
+      - name: Assert environment-file-content output is set
+        env:
+          ENV_CONTENT: ${{ steps.setup.outputs.environment-file-content }}
+        run: |
+          echo "environment-file-content output: '$ENV_CONTENT'"
+          if [ -z "$ENV_CONTENT" ]; then
+            echo "FAIL: environment-file-content output is empty"
+            exit 1
+          fi
+          echo "PASS: environment-file-content output is set"

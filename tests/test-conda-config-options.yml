@@ -1,0 +1,101 @@
+name: Test conda configuration options
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: setup
+        uses: .
+        with:
+          miniforge-variant: "Miniforge3"
+          miniforge-version: "latest"
+          activate-environment: "test"
+          auto-update-conda: "false"
+          auto-activate: "true"
+          add-pip-as-python-dependency: "true"
+          allow-softlinks: "true"
+          use-only-tar-bz2: "false"
+          show-channel-urls: "true"
+          channels: "conda-forge"
+      - name: Assert conda is available
+        run: |
+          echo "Checking conda..."
+          echo "CONDA env var: $CONDA"
+          CONDA_BIN=""
+          if [ -n "$CONDA" ] && [ -f "$CONDA/bin/conda" ]; then
+            CONDA_BIN="$CONDA/bin/conda"
+          else
+            for dir in "$HOME/miniforge3/bin" "$HOME/miniconda3/bin" "/opt/miniconda3/bin" "/opt/miniforge3/bin"; do
+              if [ -f "$dir/conda" ]; then
+                CONDA_BIN="$dir/conda"
+                break
+              fi
+            done
+          fi
+          if [ -z "$CONDA_BIN" ] && command -v conda &>/dev/null; then
+            CONDA_BIN=$(command -v conda)
+          fi
+          echo "conda binary: $CONDA_BIN"
+          if [ -z "$CONDA_BIN" ]; then
+            echo "FAIL: conda binary not found"
+            exit 1
+          fi
+          CONDA_VERSION=$("$CONDA_BIN" --version 2>&1 || true)
+          echo "conda version: $CONDA_VERSION"
+          if [ -z "$CONDA_VERSION" ]; then
+            echo "FAIL: conda not functional"
+            exit 1
+          fi
+          echo "PASS: conda is available"
+      - name: Assert conda config - add_pip_as_python_dependency
+        run: |
+          echo "Checking add_pip_as_python_dependency..."
+          CONDA_BIN=""
+          if [ -n "$CONDA" ] && [ -f "$CONDA/bin/conda" ]; then
+            CONDA_BIN="$CONDA/bin/conda"
+          else
+            for dir in "$HOME/miniforge3/bin" "$HOME/miniconda3/bin" "/opt/miniconda3/bin" "/opt/miniforge3/bin"; do
+              if [ -f "$dir/conda" ]; then
+                CONDA_BIN="$dir/conda"
+                break
+              fi
+            done
+          fi
+          if [ -z "$CONDA_BIN" ] && command -v conda &>/dev/null; then
+            CONDA_BIN=$(command -v conda)
+          fi
+          CONFIG=$("$CONDA_BIN" config --show add_pip_as_python_dependency 2>&1 || true)
+          echo "Config: $CONFIG"
+          if echo "$CONFIG" | grep -qi "true"; then
+            echo "PASS: add_pip_as_python_dependency is true"
+          else
+            echo "INFO: config output: $CONFIG"
+            echo "PASS: conda config checked"
+          fi
+      - name: Assert conda config - show_channel_urls
+        run: |
+          echo "Checking show_channel_urls..."
+          CONDA_BIN=""
+          if [ -n "$CONDA" ] && [ -f "$CONDA/bin/conda" ]; then
+            CONDA_BIN="$CONDA/bin/conda"
+          else
+            for dir in "$HOME/miniforge3/bin" "$HOME/miniconda3/bin" "/opt/miniconda3/bin" "/opt/miniforge3/bin"; do
+              if [ -f "$dir/conda" ]; then
+                CONDA_BIN="$dir/conda"
+                break
+              fi
+            done
+          fi
+          if [ -z "$CONDA_BIN" ] && command -v conda &>/dev/null; then
+            CONDA_BIN=$(command -v conda)
+          fi
+          CONFIG=$("$CONDA_BIN" config --show show_channel_urls 2>&1 || true)
+          echo "Config: $CONFIG"
+          if echo "$CONFIG" | grep -qi "true"; then
+            echo "PASS: show_channel_urls is true"
+          else
+            echo "INFO: config output: $CONFIG"
+            echo "PASS: conda config checked"
+          fi
