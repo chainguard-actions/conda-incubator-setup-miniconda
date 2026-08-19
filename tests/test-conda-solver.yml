@@ -1,0 +1,43 @@
+name: Test conda solver configuration
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: setup
+        uses: .
+        with:
+          miniforge-version: latest
+          activate-environment: test
+          conda-solver: libmamba
+          auto-update-conda: "false"
+          auto-activate-base: "false"
+      - name: Assert conda is available
+        run: |
+          if ! command -v conda &>/dev/null; then
+            echo "FAIL: conda not found on PATH"
+            exit 1
+          fi
+          echo "PASS: conda is available"
+      - name: Assert libmamba solver is configured
+        shell: bash -el {0}
+        run: |
+          SOLVER=$(conda config --show solver 2>&1)
+          echo "solver config: $SOLVER"
+          if ! echo "$SOLVER" | grep -q "libmamba"; then
+            echo "FAIL: expected libmamba solver, got: $SOLVER"
+            exit 1
+          fi
+          echo "PASS: libmamba solver is configured"
+      - name: Assert auto-update-conda is false
+        shell: bash -el {0}
+        run: |
+          AUTO_UPDATE=$(conda config --show auto_update_conda 2>&1)
+          echo "auto_update_conda: $AUTO_UPDATE"
+          if ! echo "$AUTO_UPDATE" | grep -q "False"; then
+            echo "FAIL: expected auto_update_conda=False, got: $AUTO_UPDATE"
+            exit 1
+          fi
+          echo "PASS: auto_update_conda is False"

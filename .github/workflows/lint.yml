@@ -1,0 +1,61 @@
+name: "Linting"
+
+on:
+  pull_request:
+    branches:
+      - "*"
+  push:
+    branches:
+      - "develop"
+      - "main"
+      - "master"
+
+concurrency:
+  group:
+    ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: "ubuntu-latest"
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 20
+      - run: |
+          # ci: install exact versions from package-lock.json
+          #     fast, secure, predictable compared to npm install
+          npm ci
+          npm run check
+  build:
+    name: Build
+    runs-on: "ubuntu-latest"
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 20
+      - name: Build
+        run: |
+          # ci: install exact versions from package-lock.json
+          #     fast, secure, predictable compared to npm install
+          npm ci
+          npm run build
+
+      - name: Check that all built are committed
+        run: |
+          # Check if any changes are to be committed
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "There are uncommitted changes, please run:"
+            echo "  npm run format"
+            echo "  npm run build"
+            echo "and commit the resulting changes before pushing."
+            echo "See also CONTRIBUTING.md"
+            exit 1
+          fi

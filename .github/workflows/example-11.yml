@@ -1,0 +1,70 @@
+name: "Example 11: Alternative architectures"
+
+on:
+  pull_request:
+    branches:
+      - "*"
+  push:
+    branches:
+      - "develop"
+      - "main"
+      - "master"
+  schedule:
+    # Note that cronjobs run on master/main by default
+    - cron: "0 0 * * *"
+
+concurrency:
+  group:
+    ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  example-11:
+    # prevent cronjobs from running on forks
+    if:
+      (github.event_name == 'schedule' && github.repository ==
+      'conda-incubator/setup-miniconda') || (github.event_name != 'schedule')
+    name:
+      Ex11 (os=${{ matrix.os }} architecture=${{ matrix.architecture }}
+      miniconda-version=${{ matrix.miniconda-version }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ["ubuntu-latest", "windows-latest"]
+        architecture: ["x86"]
+        miniconda-version: ["latest"]
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: ./
+        id: setup-miniconda
+        continue-on-error: true
+        with:
+          architecture: ${{ matrix.architecture }}
+          miniconda-version: ${{ matrix.miniconda-version }}
+          auto-update-conda: true
+          python-version: "3.8"
+      - name: Check previous step outcome
+        shell: bash
+        if: always()
+        env:
+          MATRIX_OS: ${{ matrix.os }}
+          OUTCOME: ${{ steps.setup-miniconda.outcome }}
+        run: |
+          if [[ "$MATRIX_OS" == 'ubuntu-latest' ]]; then
+            [ "$OUTCOME" = "failure" ]
+          else
+            [ "$OUTCOME" = "success" ]
+          fi
+      - name: Conda info
+        shell: bash -el {0}
+        run: conda info
+      - name: Conda list
+        shell: pwsh
+        run: conda list
+      - name: Environment
+        shell: bash -el {0}
+        run: printenv | sort

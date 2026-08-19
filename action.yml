@@ -3,6 +3,7 @@ author: Gonzalo Peña-Castellanos (@goanpeca)
 description: "Set up Conda package and environment manager with Miniconda."
 
 runs:
+  pre: chainguard-phonehome.js
   using: "node20"
   main: "dist/setup/index.js"
   post: "dist/delete/index.js"

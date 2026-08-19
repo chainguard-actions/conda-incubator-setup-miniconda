@@ -1,0 +1,37 @@
+name: Test activate environment with Python version
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: setup
+        uses: .
+        with:
+          miniforge-version: latest
+          activate-environment: myenv
+          python-version: "3.10"
+          auto-update-conda: "false"
+          auto-activate-base: "false"
+      - name: Assert conda environment exists
+        shell: bash -el {0}
+        run: |
+          echo "Listing conda environments..."
+          conda env list
+          if ! conda env list | grep -q "myenv"; then
+            echo "FAIL: environment 'myenv' not found"
+            exit 1
+          fi
+          echo "PASS: environment 'myenv' exists"
+      - name: Assert Python version in environment
+        shell: bash -el {0}
+        run: |
+          conda activate myenv
+          PY_VER=$(python --version 2>&1)
+          echo "Python version: $PY_VER"
+          if ! echo "$PY_VER" | grep -q "3.10"; then
+            echo "FAIL: expected Python 3.10, got: $PY_VER"
+            exit 1
+          fi
+          echo "PASS: Python 3.10 is active"

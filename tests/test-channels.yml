@@ -1,0 +1,49 @@
+name: Test conda channels configuration
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: setup
+        uses: .
+        with:
+          miniforge-version: latest
+          activate-environment: test
+          channels: conda-forge,defaults
+          channel-priority: strict
+          show-channel-urls: "true"
+          auto-update-conda: "false"
+          auto-activate-base: "false"
+      - name: Assert conda channels are configured
+        shell: bash -el {0}
+        run: |
+          echo "Checking conda config channels..."
+          CHANNELS=$(conda config --show channels 2>&1)
+          echo "channels: $CHANNELS"
+          if ! echo "$CHANNELS" | grep -q "conda-forge"; then
+            echo "FAIL: conda-forge channel not found in config"
+            exit 1
+          fi
+          echo "PASS: conda-forge channel is configured"
+      - name: Assert channel priority is strict
+        shell: bash -el {0}
+        run: |
+          PRIORITY=$(conda config --show channel_priority 2>&1)
+          echo "channel_priority: $PRIORITY"
+          if ! echo "$PRIORITY" | grep -q "strict"; then
+            echo "FAIL: expected strict channel priority, got: $PRIORITY"
+            exit 1
+          fi
+          echo "PASS: channel priority is strict"
+      - name: Assert show_channel_urls is true
+        shell: bash -el {0}
+        run: |
+          SHOW_URLS=$(conda config --show show_channel_urls 2>&1)
+          echo "show_channel_urls: $SHOW_URLS"
+          if ! echo "$SHOW_URLS" | grep -q "True"; then
+            echo "FAIL: expected show_channel_urls=True, got: $SHOW_URLS"
+            exit 1
+          fi
+          echo "PASS: show_channel_urls is True"

@@ -1,0 +1,66 @@
+name: "Example 3: Other options"
+
+on:
+  pull_request:
+    branches:
+      - "*"
+  push:
+    branches:
+      - "develop"
+      - "main"
+      - "master"
+  schedule:
+    # Note that cronjobs run on master/main by default
+    - cron: "0 0 * * *"
+
+concurrency:
+  group:
+    ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  example-3:
+    # prevent cronjobs from running on forks
+    if:
+      (github.event_name == 'schedule' && github.repository ==
+      'conda-incubator/setup-miniconda') || (github.event_name != 'schedule')
+    name: Ex3 Linux
+    runs-on: "ubuntu-latest"
+    defaults:
+      run:
+        shell: bash -el {0}
+    timeout-minute      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1s/checkout@v6.0.1
+      - uses: ./
+        with:
+          activate-environment: anaconda-client-env
+          environment-file: etc/example-environment.yml
+          python-version: 3.8
+          condarc-file: etc/example-condarc.yml
+          auto-activate: false
+          auto-update-conda: true
+      - run: |
+          conda info
+          conda list
+          printenv | sort
+
+  example-3-no-name:
+    name: Ex3-no-name Linux
+    runs-on: "ubuntu-latest"
+    defaults:
+      run:
+        shell: bash -el {0}
+    timeout-minute      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1s/checkout@v6.0.1
+      - uses: ./
+        with:
+          activate-environment: anaconda-client-env
+          environment-file: etc/example-environment-no-name.yml
+          python-version: 3.8
+          condarc-file: etc/example-condarc.yml
+          auto-activate: false
+          auto-update-conda: true
+      - run: |
+          conda info
+          conda list
+          printenv | sort

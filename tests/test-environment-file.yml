@@ -1,0 +1,57 @@
+name: Test environment file usage
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: setup
+        uses: .
+        with:
+          miniforge-version: latest
+          environment-file: tests/fixtures/environment.yml
+          activate-environment: testenv
+          auto-update-conda: "false"
+          auto-activate-base: "false"
+      - name: Assert environment-file output is set
+        env:
+          ENV_FILE: ${{ steps.setup.outputs.environment-file }}
+        run: |
+          echo "environment-file output: '$ENV_FILE'"
+          if [ -z "$ENV_FILE" ]; then
+            echo "FAIL: environment-file output is empty"
+            exit 1
+          fi
+          echo "PASS: environment-file output is set to '$ENV_FILE'"
+      - name: Assert environment-file-content output is set
+        env:
+          ENV_CONTENT: ${{ steps.setup.outputs.environment-file-content }}
+        run: |
+          echo "environment-file-content: '$ENV_CONTENT'"
+          if [ -z "$ENV_CONTENT" ]; then
+            echo "FAIL: environment-file-content output is empty"
+            exit 1
+          fi
+          echo "PASS: environment-file-content is set"
+      - name: Assert testenv environment exists
+        shell: bash -el {0}
+        run: |
+          echo "Listing conda environments..."
+          conda env list
+          if ! conda env list | grep -q "testenv"; then
+            echo "FAIL: environment 'testenv' not found"
+            exit 1
+          fi
+          echo "PASS: environment 'testenv' exists"
+      - name: Assert Python 3.11 in testenv
+        shell: bash -el {0}
+        run: |
+          conda activate testenv
+          PY_VER=$(python --version 2>&1)
+          echo "Python version: $PY_VER"
+          if ! echo "$PY_VER" | grep -q "3.11"; then
+            echo "FAIL: expected Python 3.11, got: $PY_VER"
+            exit 1
+          fi
+          echo "PASS: Python 3.11 is active in testenv"
