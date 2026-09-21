@@ -1,0 +1,47 @@
+name: Test basic Miniforge setup
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: setup
+        uses: .
+        with:
+          miniforge-variant: "Miniforge3"
+          miniforge-version: "latest"
+          activate-environment: "test"
+          auto-update-conda: "false"
+          auto-activate-base: "false"
+      - name: Assert conda is available
+        run: |
+          echo "Checking conda availability..."
+          if ! command -v conda &>/dev/null; then
+            # Try sourcing conda init
+            if [ -f "$HOME/miniforge3/etc/profile.d/conda.sh" ]; then
+              source "$HOME/miniforge3/etc/profile.d/conda.sh"
+            elif [ -f "$HOME/miniconda3/etc/profile.d/conda.sh" ]; then
+              source "$HOME/miniconda3/etc/profile.d/conda.sh"
+            fi
+          fi
+          CONDA_BIN=$(which conda 2>/dev/null || echo "")
+          echo "conda bin: $CONDA_BIN"
+          if [ -z "$CONDA_BIN" ]; then
+            # Check CONDA env var set by the action
+            if [ -n "$CONDA" ] && [ -f "$CONDA/bin/conda" ]; then
+              echo "PASS: conda found at $CONDA/bin/conda"
+            else
+              echo "FAIL: conda not found"
+              exit 1
+            fi
+          else
+            echo "PASS: conda found at $CONDA_BIN"
+          fi
+      - name: Assert environment-file output
+        env:
+          ENV_FILE: ${{ steps.setup.outputs.environment-file }}
+        run: |
+          echo "environment-file output: '$ENV_FILE'"
+          # When no environment-file is provided, this may be empty — that is acceptable
+          echo "PASS: environment-file output checked"

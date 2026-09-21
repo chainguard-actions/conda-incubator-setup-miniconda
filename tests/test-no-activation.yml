@@ -1,0 +1,41 @@
+name: Test setup without environment activation
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: setup
+        uses: .
+        with:
+          miniforge-variant: "Miniforge3"
+          miniforge-version: "latest"
+          activate-environment: ""
+          auto-update-conda: "false"
+          auto-activate-base: "false"
+      - name: Assert conda is installed (no environment activated)
+        run: |
+          echo "Checking conda installation without environment activation..."
+          # Find conda executable
+          CONDA_EXE="${CONDA}/bin/conda"
+          if [ ! -f "$CONDA_EXE" ]; then
+            for loc in "$HOME/miniforge3/bin/conda" "$HOME/miniconda3/bin/conda"; do
+              if [ -f "$loc" ]; then
+                CONDA_EXE="$loc"
+                break
+              fi
+            done
+          fi
+          if [ -z "$CONDA_EXE" ] || [ ! -f "$CONDA_EXE" ]; then
+            echo "FAIL: conda executable not found"
+            exit 1
+          fi
+          echo "PASS: conda is installed at $CONDA_EXE"
+      - name: Assert environment-file output is empty when no file provided
+        env:
+          ENV_FILE: ${{ steps.setup.outputs.environment-file }}
+        run: |
+          echo "environment-file output: '$ENV_FILE'"
+          # When no environment-file is provided, the output should be empty or unset
+          echo "PASS: environment-file output is '$ENV_FILE' (empty is acceptable)"

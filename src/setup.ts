@@ -1,0 +1,142 @@
+/**
+ * @module setup
+ * Main entry point for the action. Orchestrates installer selection,
+ * conda configuration, shell initialization, base tool installation,
+ * and target environment creation.
+ *
+ * @category Core
+ */
+
+import * as fs from "fs";
+
+import * as core from "@actions/core";
+
+import * as types from "./types";
+import * as constants from "./constants";
+import * as input from "./input";
+import * as outputs from "./outputs";
+import * as installer from "./installer";
+import * as conda from "./conda";
+import * as env from "./env";
+import * as baseTools from "./base-tools";
+
+/**
+ * Orchestrate the full conda setup: install, configure, init shell
+ * integration, install base tools, and create the target environment.
+ *
+ * @param inputs - The parsed {@link types.IActionInputs}.
+ * @throws {Error} If no conda `base` environment is found after installation.
+ */
+async function setupMiniconda(inputs: types.IActionInputs): Promise<void> {
+  let options: types.IDynamicOptions = {
+    useBundled: true,
+    useMamba: false,
+    mambaInInstaller: false,
+    condaConfig: { ...inputs.condaConfig },
+  };
+
+  await core.group(
+    `Creating bootstrap condarc file in ${constants.CONDARC_PATH}...`,
+    conda.bootstrapConfig,
+  );
+
+  const installerInfo = await core.group("Ensuring installer...", () =>
+    installer.getLocalInstallerPath(inputs, options),
+  );
+
+  // The desired installer may change the options
+  options = { ...options, ...installerInfo.options };
+
+  const basePath = conda.condaBasePath(inputs, options);
+
+  if (installerInfo.localInstallerPath && !options.useBundled) {
+    options = await core.group("Running installer...", () =>
+      installer.runInstaller(
+        installerInfo.localInstallerPath,
+        basePath,
+        inputs,
+        options,
+      ),
+    );
+  }
+
+  if (!fs.existsSync(basePath)) {
+    throw Error(
+      `No installed conda 'base' environment found at ${basePath}!` +
+        "If you are using this action in a self-hosted runner that already provides " +
+        "its own Miniconda installation, please specify its location with a `CONDA` " +
+        "environment variable. If you want us to download and install Miniconda or " +
+        'Miniforge for you, add `miniconda-version: "latest"` or `miniforge-version: "latest"`, ' +
+        "respectively, to the parameters for this action.",
+    );
+  }
+
+  await core.group("Setup environment variables...", () =>
+    outputs.setPathVariables(inputs, options),
+  );
+
+  // For potential 'channels' that may alter configuration
+  options.envSpec = await core.group("Parsing environment...", () =>
+    env.getEnvSpec(inputs),
+  );
+
+  await core.group("Writing conda configuration...", () =>
+    conda.writeCondaConfig(inputs, options),
+  );
+
+  await core.group("Initializing conda shell integration...", () =>
+    conda.condaInit(inputs, options),
+  );
+
+  // New base tools may change options
+  options = await core.group("Adding tools to 'base' env...", () =>
+    baseTools.installBaseTools(inputs, options),
+  );
+
+  if (inputs.activateEnvironment && inputs.activateEnvironment !== "base") {
+    await core.group("Ensuring environment...", () =>
+      env.ensureEnvironment(inputs, options),
+    );
+  }
+
+  // Activation profiles must be written AFTER the environment exists,
+  // otherwise .bat wrappers source conda_hook.bat and try to activate
+  // a non-existent environment, producing false warnings (#474).
+  await core.group("Writing activation commands to shell profiles...", () =>
+    conda.condaInitActivation(inputs, options),
+  );
+
+  if (core.getState(constants.OUTPUT_ENV_FILE_WAS_PATCHED)) {
+    await core.group(
+      "Maybe cleaning up patched environment-file...",
+      async () => {
+        const patchedEnv = core.getState(constants.OUTPUT_ENV_FILE_PATH);
+        if (inputs.cleanPatchedEnvironmentFile === "true") {
+          fs.unlinkSync(patchedEnv);
+          core.info(`Cleaned ${patchedEnv}`);
+        } else {
+          core.info(`Leaving ${patchedEnv} in place`);
+        }
+      },
+    );
+  }
+
+  core.info("setup-miniconda ran successfully");
+}
+
+/**
+ * Top-level entry point that gathers inputs and runs the setup, catching
+ * and reporting any errors as a GitHub Actions failure.
+ */
+async function run(): Promise<void> {
+  try {
+    const inputs = await core.group("Gathering Inputs...", input.parseInputs);
+    await setupMiniconda(inputs);
+  } catch (err) {
+    core.setFailed((err as Error).message);
+  }
+}
+
+void run();
+
+export default run;

@@ -1,0 +1,60 @@
+name: Test custom channels configuration
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: setup
+        uses: .
+        with:
+          miniforge-variant: "Miniforge3"
+          miniforge-version: "latest"
+          activate-environment: "test"
+          channels: "conda-forge,defaults"
+          channel-priority: "strict"
+          show-channel-urls: "true"
+          auto-update-conda: "false"
+          auto-activate-base: "false"
+      - name: Assert conda is installed and channels are configured
+        run: |
+          echo "Checking conda installation..."
+          CONDA_EXE="${CONDA}/bin/conda"
+          if [ ! -f "$CONDA_EXE" ]; then
+            # Try common locations
+            for loc in "$HOME/miniforge3/bin/conda" "$HOME/miniconda3/bin/conda" "$(which conda 2>/dev/null)"; do
+              if [ -f "$loc" ]; then
+                CONDA_EXE="$loc"
+                break
+              fi
+            done
+          fi
+          echo "conda executable: $CONDA_EXE"
+          if [ -z "$CONDA_EXE" ] || [ ! -f "$CONDA_EXE" ]; then
+            echo "FAIL: conda executable not found"
+            exit 1
+          fi
+          echo "PASS: conda is installed"
+      - name: Assert channel priority is set
+        run: |
+          CONDA_EXE="${CONDA}/bin/conda"
+          if [ ! -f "$CONDA_EXE" ]; then
+            for loc in "$HOME/miniforge3/bin/conda" "$HOME/miniconda3/bin/conda"; do
+              if [ -f "$loc" ]; then
+                CONDA_EXE="$loc"
+                break
+              fi
+            done
+          fi
+          if [ -z "$CONDA_EXE" ] || [ ! -f "$CONDA_EXE" ]; then
+            echo "FAIL: conda executable not found"
+            exit 1
+          fi
+          PRIORITY=$("$CONDA_EXE" config --show channel_priority 2>/dev/null | grep -oE 'strict|flexible|disabled' || echo "")
+          echo "channel_priority: '$PRIORITY'"
+          if [ "$PRIORITY" != "strict" ]; then
+            echo "FAIL: expected channel_priority=strict, got '$PRIORITY'"
+            exit 1
+          fi
+          echo "PASS: channel_priority is strict"

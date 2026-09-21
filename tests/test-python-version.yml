@@ -1,0 +1,44 @@
+name: Test Python version installation
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: setup
+        uses: .
+        with:
+          miniforge-variant: "Miniforge3"
+          miniforge-version: "latest"
+          activate-environment: "pyenv"
+          python-version: "3.11"
+          auto-update-conda: "false"
+          auto-activate-base: "false"
+      - name: Assert Python 3.11 is installed in the environment
+        run: |
+          echo "Checking Python version in conda environment..."
+          # Find conda executable
+          CONDA_EXE="${CONDA}/bin/conda"
+          if [ ! -f "$CONDA_EXE" ]; then
+            for loc in "$HOME/miniforge3/bin/conda" "$HOME/miniconda3/bin/conda"; do
+              if [ -f "$loc" ]; then
+                CONDA_EXE="$loc"
+                break
+              fi
+            done
+          fi
+          if [ -z "$CONDA_EXE" ] || [ ! -f "$CONDA_EXE" ]; then
+            echo "FAIL: conda executable not found"
+            exit 1
+          fi
+          echo "conda executable: $CONDA_EXE"
+          # Check Python version in the pyenv environment
+          PYTHON_VERSION=$("$CONDA_EXE" run -n pyenv python --version 2>&1 || echo "")
+          echo "Python version: '$PYTHON_VERSION'"
+          if echo "$PYTHON_VERSION" | grep -q "3\.11"; then
+            echo "PASS: Python 3.11 is installed in pyenv environment"
+          else
+            echo "FAIL: Expected Python 3.11, got: '$PYTHON_VERSION'"
+            exit 1
+          fi
