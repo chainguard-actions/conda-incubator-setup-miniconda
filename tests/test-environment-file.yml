@@ -1,0 +1,50 @@
+name: Test environment-file
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash -el {0}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        with:
+          miniforge-version: latest
+          environment-file: tests/fixtures/environment.yml
+          activate-environment: fixture-env
+          auto-activate-base: "false"
+      - name: Assert outputs
+        env:
+          ENV_FILE: ${{ steps.action.outputs.environment-file }}
+          ENV_CONTENT: ${{ steps.action.outputs.environment-file-content }}
+          PATCHED: ${{ steps.action.outputs.environment-file-was-patched }}
+        run: |
+          echo "environment-file: $ENV_FILE"
+          echo "content: $ENV_CONTENT"
+          echo "patched: $PATCHED"
+          case "$ENV_FILE" in
+            *environment.yml) ;;
+            *) echo "FAIL: unexpected environment-file output"; exit 1 ;;
+          esac
+          if ! echo "$ENV_CONTENT" | grep -q "fixture-env"; then
+            echo "FAIL: content does not contain env name"
+            exit 1
+          fi
+          echo "PASS"
+      - name: Assert environment active
+        run: |
+          echo "CONDA_DEFAULT_ENV=$CONDA_DEFAULT_ENV"
+          if [ "$CONDA_DEFAULT_ENV" != "fixture-env" ]; then
+            echo "FAIL: expected fixture-env active"
+            exit 1
+          fi
+          PYV="$(python -c 'import sys; print("%d.%d" % sys.version_info[:2])')"
+          echo "python: $PYV"
+          if [ "$PYV" != "3.11" ]; then
+            echo "FAIL: expected python 3.11"
+            exit 1
+          fi
+          echo "PASS"

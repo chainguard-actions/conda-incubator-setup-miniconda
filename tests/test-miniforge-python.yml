@@ -1,0 +1,35 @@
+name: Test miniforge with python-version
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash -el {0}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        with:
+          miniforge-version: latest
+          activate-environment: test-env
+          python-version: "3.11"
+          auto-activate-base: "false"
+      - name: Assert conda installed and env active
+        run: |
+          echo "CONDA=$CONDA"
+          which conda || { echo "FAIL: conda not on PATH"; exit 1; }
+          conda info
+          echo "CONDA_DEFAULT_ENV=$CONDA_DEFAULT_ENV"
+          if [ "$CONDA_DEFAULT_ENV" != "test-env" ]; then
+            echo "FAIL: expected active env test-env"
+            exit 1
+          fi
+          PYV="$(python -c 'import sys; print("%d.%d" % sys.version_info[:2])')"
+          echo "python: $PYV"
+          if [ "$PYV" != "3.11" ]; then
+            echo "FAIL: expected python 3.11"
+            exit 1
+          fi
+          echo "PASS"

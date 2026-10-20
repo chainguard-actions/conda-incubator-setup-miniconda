@@ -1,0 +1,39 @@
+name: Test base activation with no environment
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash -el {0}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        with:
+          miniforge-version: latest
+          activate-environment: ""
+          auto-activate-base: "true"
+          channels: conda-forge
+          channel-priority: strict
+      - name: Assert base active and config applied
+        run: |
+          echo "CONDA_DEFAULT_ENV=$CONDA_DEFAULT_ENV"
+          if [ "$CONDA_DEFAULT_ENV" != "base" ]; then
+            echo "FAIL: expected base env active"
+            exit 1
+          fi
+          PRIO="$(conda config --show channel_priority)"
+          echo "$PRIO"
+          if ! echo "$PRIO" | grep -q "strict"; then
+            echo "FAIL: channel_priority not strict"
+            exit 1
+          fi
+          CH="$(conda config --show channels)"
+          echo "$CH"
+          if ! echo "$CH" | grep -q "conda-forge"; then
+            echo "FAIL: conda-forge not in channels"
+            exit 1
+          fi
+          echo "PASS"
