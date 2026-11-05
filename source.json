@@ -4,8 +4,13 @@
   "version": "v4.0.1",
   "commit_sha": "8ee1f361103df19b6f8c8655fd3967a8ecb162d5",
   "url": "https://github.com/conda-incubator/setup-miniconda",
-  "policy_sha": "d636be7e43ef829af6e853da6b3c7566db9f72fe",
+  "policy_sha": "374911c4be584df24e6da57af2d990570ef0f859",
   "test_policy_sha": "843adf9e4b8f85d0c08b27b9d0b09dd094b54702",
   "test_agent_version": "2",
-  "harden_agent_version": "2"
+  "harden_agent_version": "2",
+  "dist_artifact": {
+    "gcs_uri": "gs://patch-actions-node-artifacts/dist-artifacts/conda-incubator/setup-miniconda/v4.0.1/sha256-6d62941ee64e147a7736f7d3ccb8fc3ec2cf15d50004faa65b6b3f5dbb28deaa.tar.gz",
+    "sha256": "6d62941ee64e147a7736f7d3ccb8fc3ec2cf15d50004faa65b6b3f5dbb28deaa",
+    "size_bytes": 616692
+  }
 }
